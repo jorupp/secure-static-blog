@@ -89,9 +89,9 @@ namespace server
                     context.Response.Headers.Add(h.Key, h.Value.First());
                 }
                 context.Response.StatusCode = (int)res.StatusCode;
-                //var cs = await res.Content.ReadAsStreamAsync();
-                //context.Response.Body = cs;
-                await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
+                var cs = await res.Content.ReadAsStreamAsync();
+                await cs.CopyToAsync(context.Response.Body);
+                //await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
                 //await next();
             });
 
