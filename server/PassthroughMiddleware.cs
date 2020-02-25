@@ -57,6 +57,8 @@ namespace server
                 return;
             }
 
+            log.LogInformation($"searching for {context.Request.Host.Value} in {string.Join(", ", _settings.Value.Hosts.Select(i => i.Hostname))}");
+
             var host = _settings.Value.Hosts.FirstOrDefault(i =>
                 string.Equals(i.Hostname, context.Request.Host.Value,
                     StringComparison.InvariantCultureIgnoreCase));
