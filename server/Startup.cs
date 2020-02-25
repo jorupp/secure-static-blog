@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.AzureAD.UI;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -30,6 +32,7 @@ namespace server
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddLogging(c => c.AddConsole());
+            services.AddHttpClient();
 
             services.AddAuthentication(AzureADDefaults.AuthenticationScheme)
                 .AddAzureAD(options => Configuration.Bind("AzureAd", options));
@@ -77,8 +80,19 @@ namespace server
                     await context.ChallengeAsync();
                     return;
                 }
-                log.LogInformation(auth.Succeeded.ToString());
-                await next();
+                var target = new Uri(new Uri("http://localhost:9000/"), context.Request.Path.ToString());
+                var clientFactory = context.RequestServices.GetService<IHttpClientFactory>();
+                using var c = clientFactory.CreateClient();
+                var res = await c.GetAsync(target);
+                foreach (var h in res.Headers)
+                {
+                    context.Response.Headers.Add(h.Key, h.Value.First());
+                }
+                context.Response.StatusCode = (int)res.StatusCode;
+                //var cs = await res.Content.ReadAsStreamAsync();
+                //context.Response.Body = cs;
+                await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
+                //await next();
             });
 
             app.UseAuthentication();
