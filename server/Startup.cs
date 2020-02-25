@@ -37,6 +37,9 @@ namespace server
             services.AddAuthentication(AzureADDefaults.AuthenticationScheme)
                 .AddAzureAD(options => Configuration.Bind("AzureAd", options));
 
+            services.Configure<PassthroughMiddlewareSettings>(Configuration.GetSection("Passthrough"));
+            services.AddScoped<PassthroughMiddleware>();
+
             //services.AddRazorPages().AddMvcOptions(options =>
             //{
             //    var policy = new AuthorizationPolicyBuilder()
@@ -65,35 +68,37 @@ namespace server
 
             //app.UseRouting();
 
-            app.Use(async (context, next) =>
-            {
-                var log = context.RequestServices.GetService<ILogger<Program>>();
-                log.LogInformation(context.Request.GetDisplayUrl());
-                if (context.Request.GetDisplayUrl().EndsWith("/signin-oidc"))
-                {
-                    await next();
-                    return;
-                }
-                var auth = await context.AuthenticateAsync();
-                if (!auth.Succeeded)
-                {
-                    await context.ChallengeAsync();
-                    return;
-                }
-                var target = new Uri(new Uri("http://localhost:9000/"), context.Request.Path.ToString());
-                var clientFactory = context.RequestServices.GetService<IHttpClientFactory>();
-                using var c = clientFactory.CreateClient();
-                var res = await c.GetAsync(target);
-                foreach (var h in res.Headers)
-                {
-                    context.Response.Headers.Add(h.Key, h.Value.First());
-                }
-                context.Response.StatusCode = (int)res.StatusCode;
-                var cs = await res.Content.ReadAsStreamAsync();
-                await cs.CopyToAsync(context.Response.Body);
-                //await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
-                //await next();
-            });
+            app.UseMiddleware<PassthroughMiddleware>();
+
+            //app.Use(async (context, next) =>
+            //{
+            //    var log = context.RequestServices.GetService<ILogger<Program>>();
+            //    log.LogInformation(context.Request.GetDisplayUrl());
+            //    if (context.Request.GetDisplayUrl().EndsWith("/signin-oidc"))
+            //    {
+            //        await next();
+            //        return;
+            //    }
+            //    var auth = await context.AuthenticateAsync();
+            //    if (!auth.Succeeded)
+            //    {
+            //        await context.ChallengeAsync();
+            //        return;
+            //    }
+            //    var target = new Uri(new Uri("http://localhost:9000/"), context.Request.Path.ToString());
+            //    var clientFactory = context.RequestServices.GetService<IHttpClientFactory>();
+            //    using var c = clientFactory.CreateClient();
+            //    var res = await c.GetAsync(target);
+            //    foreach (var h in res.Headers)
+            //    {
+            //        context.Response.Headers.Add(h.Key, h.Value.First());
+            //    }
+            //    context.Response.StatusCode = (int)res.StatusCode;
+            //    var cs = await res.Content.ReadAsStreamAsync();
+            //    await cs.CopyToAsync(context.Response.Body);
+            //    //await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
+            //    //await next();
+            //});
 
             app.UseAuthentication();
             app.UseAuthorization();
