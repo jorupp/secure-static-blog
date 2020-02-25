@@ -82,8 +82,6 @@ namespace server
             await cs.CopyToAsync(context.Response.Body);
             //await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
             //await next();
-
-            throw new NotImplementedException();
         }
     }
 }
