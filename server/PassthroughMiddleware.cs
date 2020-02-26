@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,6 +22,10 @@ namespace server
     public class PassthroughMiddlewareHost
     {
         public string Hostname { get; set; }
+
+        public PassthroughType Type { get; set; }
+
+        public string ConnectionString { get; set; }
 
         public string Path { get; set; }
 
@@ -71,19 +77,42 @@ namespace server
                 return;
             }
 
-            var target = new Uri(new Uri(host.Path), context.Request.Path.ToString());
-            var clientFactory = context.RequestServices.GetService<IHttpClientFactory>();
-            using var c = clientFactory.CreateClient();
-            var res = await c.GetAsync(target);
-            foreach (var h in res.Headers)
+            switch (host.Type)
             {
-                context.Response.Headers.Add(h.Key, h.Value.First());
+                case PassthroughType.Url:
+                    var target = new Uri(new Uri(host.Path), context.Request.Path.ToString());
+                    var clientFactory = context.RequestServices.GetService<IHttpClientFactory>();
+                    using (var c = clientFactory.CreateClient())
+                    {
+                        var res = await c.GetAsync(target);
+                        foreach (var h in res.Headers)
+                        {
+                            context.Response.Headers.Add(h.Key, h.Value.First());
+                        }
+                        context.Response.StatusCode = (int)res.StatusCode;
+                        var cs = await res.Content.ReadAsStreamAsync();
+                        await cs.CopyToAsync(context.Response.Body);
+                        //await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
+                        return;
+                    }
+                case PassthroughType.AzureBlobStorage:
+                    var acc = CloudStorageAccount.Parse(host.ConnectionString);
+                    var cl = acc.CreateCloudBlobClient();
+                    var container = cl.GetContainerReference(host.Path);
+                    log.LogInformation($"container uri: {container.Uri}");
+                    log.LogInformation($"path: {context.Request.Path.ToString()}");
+                    var blobPath = new Uri(container.Uri.ToString() + context.Request.Path.ToString());
+                    if (blobPath.ToString().EndsWith("/"))
+                    {
+                        blobPath = new Uri(blobPath, "index.html");
+                    }
+                    log.LogInformation($"blob path: {blobPath}");
+                    var blob = await cl.GetBlobReferenceFromServerAsync(blobPath);
+                    await blob.DownloadRangeToStreamAsync(context.Response.Body, null, null);
+                    return;
             }
-            context.Response.StatusCode = (int)res.StatusCode;
-            var cs = await res.Content.ReadAsStreamAsync();
-            await cs.CopyToAsync(context.Response.Body);
-            //await context.Response.WriteAsync(await res.Content.ReadAsStringAsync());
-            //await next();
+
+            await next(context);
         }
     }
 }
