@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -25,7 +26,7 @@ namespace server
 
         public PassthroughType Type { get; set; }
 
-        public string ConnectionString { get; set; }
+        public string ConnectionStringName { get; set; }
 
         public string Path { get; set; }
 
@@ -40,11 +41,13 @@ namespace server
 
     public class PassthroughMiddleware : IMiddleware
     {
-        private IOptions<PassthroughMiddlewareSettings> _settings;
+        private readonly IOptions<PassthroughMiddlewareSettings> _settings;
+        private readonly IConfiguration _configuration;
 
-        public PassthroughMiddleware(IOptions<PassthroughMiddlewareSettings> settings)
+        public PassthroughMiddleware(IOptions<PassthroughMiddlewareSettings> settings, IConfiguration configuration)
         {
             _settings = settings;
+            _configuration = configuration;
         }
 
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -96,7 +99,7 @@ namespace server
                         return;
                     }
                 case PassthroughType.AzureBlobStorage:
-                    var acc = CloudStorageAccount.Parse(host.ConnectionString);
+                    var acc = CloudStorageAccount.Parse(_configuration.GetConnectionString(host.ConnectionStringName));
                     var cl = acc.CreateCloudBlobClient();
                     var container = cl.GetContainerReference(host.Path);
                     log.LogInformation($"container uri: {container.Uri}");

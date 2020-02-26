@@ -6,13 +6,22 @@
       "Microsoft.Hosting.Lifetime": "Information"
     }
   },
+  "ConnectionStrings": {
+    "BlobStorage": "....."
+  },
   "Passthrough": {
     "Hosts": [
       {
         "Hostname": "localhost:5001",
-        "Type":  "Url", 
-        "Path":  "http://localhost:9000"
+        "Type": "AzureBlobStorage",
+        "ConnectionStringName": "BlobStorage",
+        "Path": "blog"
+      },
+      {
+        "Hostname": "localhost:5000",
+        "Type": "Url",
+        "Path": "http://localhost:9000"
       }
-    ] 
-  } 
+    ]
+  }
 }
