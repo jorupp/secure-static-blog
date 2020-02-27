@@ -25,7 +25,6 @@ jobs:
     - name: 'Run Azure webapp deploy action using publish profile credentials'
       uses: azure/webapps-deploy@v1
       with: 
-        working-directory: ./server
         app-name: rupp-secure-blog # Replace with your app name
         publish-profile: ${{ secrets.azurePublishProfile }}
-        package: './dotnetcorewebapp' 
+        package: './serverdotnetcorewebapp' 
