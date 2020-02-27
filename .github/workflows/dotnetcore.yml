@@ -1,6 +1,10 @@
 name: .NET Core
 
-on: [push]
+on:
+  push:
+    paths:
+      - 'server/**'
+      - '.github/workflows/dotnetcore.yml'
 
 jobs:
   build:
