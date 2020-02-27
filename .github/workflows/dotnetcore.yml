@@ -14,15 +14,18 @@ jobs:
       with:
         dotnet-version: '3.1.100'
     - name: Build with dotnet
+      working-directory: ./server
       run: dotnet build --configuration Release
 
     - name: dotnet publish
+      working-directory: ./server
       run: |
         dotnet publish -c Release -o dotnetcorewebapp
  
     - name: 'Run Azure webapp deploy action using publish profile credentials'
       uses: azure/webapps-deploy@v1
       with: 
+        working-directory: ./server
         app-name: rupp-secure-blog # Replace with your app name
         publish-profile: ${{ secrets.azurePublishProfile }}
         package: './dotnetcorewebapp' 
