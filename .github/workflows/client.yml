@@ -1,6 +1,12 @@
 name: Deploy static site to Azure
 
-on: [push]
+
+on:
+  push:
+    paths:
+      - 'client/**'
+      - '.github/workflows/client.yml'
+
 
 jobs:
   build:
